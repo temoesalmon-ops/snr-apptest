@@ -3,7 +3,7 @@ from PIL import Image
 import pytesseract
 from streamlit_paste_button import paste_image_button
 
-st.title("Transcripteur de Texte (OCR)")
+st.title("Code SNR en Image")
 
 paste_result = paste_image_button(label="📋 Coller une image (Ctrl+V ici)")
 
