@@ -1,14 +1,24 @@
 import streamlit as st
 from PIL import Image
 import pytesseract
+from streamlit_paste_button import paste_image_button
 
 st.title("Transcripteur de Texte (OCR)")
 
-# Zone de glisser-déposer (Drag & Drop natif de Streamlit)
-uploaded_file = st.file_uploader("Glissez ou déposez votre image ici...", type=["png", "jpg", "jpeg"])
+# Option de collage direct depuis le presse-papier
+paste_result = paste_image_button(label="📋 Coller une image (Ctrl+V ici)")
 
-if uploaded_file is not None:
+# Option classique de fichier / glisser-déposer
+uploaded_file = st.file_uploader("Ou glissez/uploadez un fichier...", type=["png", "jpg", "jpeg"])
+
+img = None
+
+if paste_result.image_data is not None:
+    img = paste_result.image_data
+elif uploaded_file is not None:
     img = Image.open(uploaded_file)
+
+if img is not None:
     st.image(img, caption="Image chargée", use_container_width=True)
     
     with st.spinner("Transcription en cours..."):
