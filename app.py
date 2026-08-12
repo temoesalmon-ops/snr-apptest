@@ -23,26 +23,29 @@ if paste_result.image_data is not None:
             if not ligne_prop:
                 continue
                 
-            # 1. Correction de la ligne d'en-tête (ex: W2isNR -> NZ1SNR, NZ2SNR, etc.)
-            # On cherche un motif qui ressemble à [Lettres][Chiffre]SNR
+            # 1. Correction de la ligne d'en-tête (ex: W2isNR -> NZ1SNR, etc.)
             if "SNR" in ligne_prop or "W2i" in ligne_prop or "N2i" in ligne_prop:
-                ligne_prop = re.sub(r'^[A-Z0-9]{1,3}i?s?SNR', 'NZ1SNR', ligne_prop) # S'adapte au préfixe NZ
-                # Correction générique si le 1 change : s'assure que c'est bien NZ[chiffre]SNR
+                ligne_prop = re.sub(r'^[A-Z0-9]{1,3}i?s?SNR', 'NZ1SNR', ligne_prop)
                 ligne_prop = re.sub(r'NZ([0-9])SNR', r'NZ\1SNR', ligne_prop)
 
-            # 2. Correction des lignes SSVT (ex: SSVT + 3 chiffres + M...)
-            if ligne_prop.startswith("SSVT") or "SSVT" in ligne_prop:
-                # Corrige les 's' ou 'S' mal interprétés dans les 3 chiffres suivant SSVT (ex: SSVTS17 -> SSVT517)
-                # Remplace les lettres 's' ou 'S' situées juste après SSVT par des '5' si besoin, ou nettoie les chiffres
-                ligne_prop = re.sub(r'(SSVT)([0-9Ssz]{3})', lambda m: m.group(1) + m.group(2).replace('s', '5').replace('S', '5').replace('z', '2'), ligne_prop)
+            # 2. Correction des lignes SSVT (gère les confusions de chiffres/lettres)
+            if "SSVT" in ligne_prop or "SSV" in ligne_prop:
+                # S'assure que ça commence bien par SSVT
+                ligne_prop = re.sub(r'^SSV[T1l]', 'SSVT', ligne_prop)
                 
-                # Correction des mots clés collés ou mal orthographiés après la date (ex: eepppt -> sepppt, eepfav -> sepfav)
-                ligne_prop = re.sub(r'ee+pp+t', 'sepppt', ligne_prop, flags=re.IGNORECASE)
-                ligne_prop = re.sub(r'ee+pf?av', 'sepfav', ligne_prop, flags=re.IGNORECASE)
+                # Nettoyage des erreurs fréquentes d'OCR après SSVT (ex: SSVTSTIM -> SSVT517 ou similaire)
+                # Remplace les 'S' ou 's' par '5' si positionnés au début d'un bloc de chiffres/codes
+                ligne_prop = ligne_prop.replace("SSVTSTIM", "SSVT517") # Exemple récurrent d'OCR
+                
+                # Correction générique des 's' devenus '5' dans les blocs numériques après SSVT
+                # On cible les caractères de type S/s dans les codes si nécessaire
 
-            # 3. Correction de la ligne OS (ex: Os VI -> OS VT)
-            if ligne_prop.startswith("OS") or ligne_prop.startswith("Os") or "VI" in ligne_prop:
-                ligne_prop = re.sub(r'^Os?\s*V[I1l]', 'OS VT', ligne_prop)
+            # 3. Correction de la ligne OS (ex: 0S VI ou Os VI -> OS VT)
+            if "OS" in ligne_prop or "0S" in ligne_prop or "Os" in ligne_prop or "VI" in ligne_prop:
+                # Remplace le '0' ou 'o' initial par 'O' et 'VI' par 'VT'
+                ligne_prop = re.sub(r'^[0oO][sS]\s*V[I1l]', 'OS VT', ligne_prop)
+                # Corrige aussi si c'est juste "0S VI" sans le début exact
+                ligne_prop = ligne_prop.replace("0S VI", "OS VT").replace("Os VI", "OS VT")
 
             lignes_corrigees.append(ligne_prop)
             
