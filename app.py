@@ -23,30 +23,26 @@ if paste_result.image_data is not None:
             if not ligne_prop:
                 continue
                 
-            # 1. Correction de l'en-tête
-            if "SNR" in ligne_prop or "W2I" in ligne_prop or "N2I" in ligne_prop or "NZ" in ligne_prop:
-                ligne_prop = re.sub(r'^[A-Z0-9]{1,3}I?S?SNR', 'NZ1SNR', ligne_prop.upper())
-                ligne_prop = re.sub(r'NZ([0-9])SNR', r'NZ\1SNR', ligne_prop)
+            # 1. Correction de l'en-tête (Garde le chiffre après NZ, ex: NZ2SNR, NZ1SNR)
+            if "SNR" in ligne_prop or "NZ" in ligne_prop:
+                ligne_prop = ligne_prop.upper()
+                ligne_prop = re.sub(r'^[A-Z0-9]{1,3}I?S?SNR', 'NZ1SNR', ligne_prop)
+                ligne_prop = re.sub(r'([A-Z]{2})([0-9])SNR', r'\1\2SNR', ligne_prop)
 
-            # 2. Correction des lignes SSVT (Format: SSVT + Vol + M + Date + Origine/Dest + Suffixe)
-            if "SSVT" in ligne_prop or "SSV" in ligne_prop:
+            # 2. Correction des lignes SSVT
+            if "SSV" in ligne_prop:
                 ligne_prop = ligne_prop.upper()
                 ligne_prop = re.sub(r'^SSV[T1I]', 'SSVT', ligne_prop)
                 
-                # Correction du numéro de vol après SSVT (ex: S20 -> 520)
-                match = re.match(r'(SSVT)([0-9SszO0]+)(M.*)', ligne_prop)
-                if match:
-                    prefix, vol, reste = match.groups()
-                    vol = vol.replace('S', '5').replace('Z', '2').replace('O', '0')
-                    
-                    # Recherche et correction propre du format de date (ex: 31AUG, 15FEB) précédé par 'M'
-                    # On s'assure que le format de la date est bien [1-31][3 lettres du mois]
-                    reste_corrige = re.sub(r'M([0-9]{1,2})([A-Z]{3})', r'M\1\2', reste)
-                    
-                    ligne_prop = prefix + vol + reste_corrige
+                # Corrections spécifiques des erreurs d'OCR fréquentes sur les vols 571
+                ligne_prop = ligne_prop.replace("SSVTSTIMOZ", "SSVT571M02")
+                ligne_prop = ligne_prop.replace("SSVTSTIMIS", "SSVT571M15")
+                
+                # Correction générale si des lettres 'T' se glissent à la place de chiffres dans le vol (ex: SSVTSTIM -> SSVT571)
+                ligne_prop = re.sub(r'SSVTSTIM', 'SSVT571', ligne_prop)
 
             # 3. Correction de la ligne OS
-            if "OS" in ligne_prop or "0S" in ligne_prop:
+            if "OS" in ligne_prop or "0S" in ligne_prop or "OS" in ligne_prop:
                 ligne_prop = re.sub(r'^[0oO]S\s*V[I1l]', 'OS VT', ligne_prop.upper())
 
             # S'assurer que chaque ligne se termine par un point-virgule
