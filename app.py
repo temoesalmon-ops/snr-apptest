@@ -23,29 +23,30 @@ if paste_result.image_data is not None:
             if not ligne_prop:
                 continue
                 
-            # 1. Correction de la ligne d'en-tête (ex: W2isNR -> NZ1SNR, etc.)
-            if "SNR" in ligne_prop or "W2i" in ligne_prop or "N2i" in ligne_prop:
-                ligne_prop = re.sub(r'^[A-Z0-9]{1,3}i?s?SNR', 'NZ1SNR', ligne_prop)
+            # 1. Correction de l'en-tête
+            if "SNR" in ligne_prop or "W2I" in ligne_prop or "N2I" in ligne_prop or "NZ" in ligne_prop:
+                ligne_prop = re.sub(r'^[A-Z0-9]{1,3}I?S?SNR', 'NZ1SNR', ligne_prop.upper())
                 ligne_prop = re.sub(r'NZ([0-9])SNR', r'NZ\1SNR', ligne_prop)
 
-            # 2. Correction des lignes SSVT (gère les confusions de chiffres/lettres)
+            # 2. Correction des lignes SSVT (Structure : SSVT + Vol + M + Date + Origine/Dest + Suffixe)
             if "SSVT" in ligne_prop or "SSV" in ligne_prop:
-                # S'assure que ça commence bien par SSVT
-                ligne_prop = re.sub(r'^SSV[T1l]', 'SSVT', ligne_prop)
+                ligne_prop = ligne_prop.upper()
+                ligne_prop = re.sub(r'^SSV[T1I]', 'SSVT', ligne_prop)
                 
-                # Nettoyage des erreurs fréquentes d'OCR après SSVT (ex: SSVTSTIM -> SSVT517 ou similaire)
-                # Remplace les 'S' ou 's' par '5' si positionnés au début d'un bloc de chiffres/codes
-                ligne_prop = ligne_prop.replace("SSVTSTIM", "SSVT517") # Exemple récurrent d'OCR
-                
-                # Correction générique des 's' devenus '5' dans les blocs numériques après SSVT
-                # On cible les caractères de type S/s dans les codes si nécessaire
+                # Correction des erreurs de chiffres dans le numéro de vol (ex: S20 -> 520, O -> 0)
+                match = re.match(r'(SSVT)([A-Z0-9]+)', ligne_prop)
+                if match:
+                    prefix, rest = match.groups()
+                    rest = re.sub(r'^[S5][0-9O0]{2,3}', lambda m: m.group(0).replace('S', '5').replace('O', '0'), rest)
+                    ligne_prop = prefix + rest
 
-            # 3. Correction de la ligne OS (ex: 0S VI ou Os VI -> OS VT)
-            if "OS" in ligne_prop or "0S" in ligne_prop or "Os" in ligne_prop or "VI" in ligne_prop:
-                # Remplace le '0' ou 'o' initial par 'O' et 'VI' par 'VT'
-                ligne_prop = re.sub(r'^[0oO][sS]\s*V[I1l]', 'OS VT', ligne_prop)
-                # Corrige aussi si c'est juste "0S VI" sans le début exact
-                ligne_prop = ligne_prop.replace("0S VI", "OS VT").replace("Os VI", "OS VT")
+            # 3. Correction de la ligne OS
+            if "OS" in ligne_prop or "0S" in ligne_prop:
+                ligne_prop = re.sub(r'^[0oO]S\s*V[I1l]', 'OS VT', ligne_prop.upper())
+
+            # S'assurer que chaque ligne se termine par un point-virgule
+            if not ligne_prop.endswith(';'):
+                ligne_prop += ';'
 
             lignes_corrigees.append(ligne_prop)
             
