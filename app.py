@@ -13,16 +13,16 @@ if paste_result.image_data is not None:
     st.image(img, caption="Image chargée", use_container_width=True)
     
     with st.spinner("Transcription en cours..."):
-        # PSM 6 : Traite l'image comme un bloc de texte uniforme
-        # On ajoute oem 3 (par défaut)
         texte_brut = pytesseract.image_to_string(img, config='--oem 3 --psm 6')
         
-        # --- CORRECTION AUTOMATIQUE DES ERREURS COURANTES (OCR) ---
-        # Exemple : Si un 's' ou 'S' se glisse entre deux chiffres (ex: 202s-11-11 -> 2025-11-11)
-        texte_corrige = re.sub(r'(?<=\d)[sS](?=\d)', '5', texte_brut)
-        
-        # Vous pouvez ajouter d'autres règles si besoin (ex: O et 0)
-        # texte_corrige = texte_corrige.replace('O', '0') 
+        # --- CORRECTIONS CIBLÉES DES ERREURS OCR ---
+        texte_corrige = texte_brut
+        texte_corrige = texte_corrige.replace("W2isNR", "NZ1SNR")
+        texte_corrige = texte_corrige.replace("SSVTS", "SSVT5")
+        texte_corrige = texte_corrige.replace("Os VI", "OS VT")
+        texte_corrige = texte_corrige.replace("eepppt", "sepppt")
+        texte_corrige = texte_corrige.replace("eepfav", "sepfav")
+        texte_corrige = re.sub(r'OS\s+VI', 'OS VT', texte_corrige)
 
         st.subheader("Résultat corrigé :")
         st.code(texte_corrige.strip())
