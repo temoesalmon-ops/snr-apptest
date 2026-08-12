@@ -28,17 +28,22 @@ if paste_result.image_data is not None:
                 ligne_prop = re.sub(r'^[A-Z0-9]{1,3}I?S?SNR', 'NZ1SNR', ligne_prop.upper())
                 ligne_prop = re.sub(r'NZ([0-9])SNR', r'NZ\1SNR', ligne_prop)
 
-            # 2. Correction des lignes SSVT (Structure : SSVT + Vol + M + Date + Origine/Dest + Suffixe)
+            # 2. Correction des lignes SSVT (Format: SSVT + Vol + M + Date + Origine/Dest + Suffixe)
             if "SSVT" in ligne_prop or "SSV" in ligne_prop:
                 ligne_prop = ligne_prop.upper()
                 ligne_prop = re.sub(r'^SSV[T1I]', 'SSVT', ligne_prop)
                 
-                # Correction des erreurs de chiffres dans le numéro de vol (ex: S20 -> 520, O -> 0)
-                match = re.match(r'(SSVT)([A-Z0-9]+)', ligne_prop)
+                # Correction du numéro de vol après SSVT (ex: S20 -> 520)
+                match = re.match(r'(SSVT)([0-9SszO0]+)(M.*)', ligne_prop)
                 if match:
-                    prefix, rest = match.groups()
-                    rest = re.sub(r'^[S5][0-9O0]{2,3}', lambda m: m.group(0).replace('S', '5').replace('O', '0'), rest)
-                    ligne_prop = prefix + rest
+                    prefix, vol, reste = match.groups()
+                    vol = vol.replace('S', '5').replace('Z', '2').replace('O', '0')
+                    
+                    # Recherche et correction propre du format de date (ex: 31AUG, 15FEB) précédé par 'M'
+                    # On s'assure que le format de la date est bien [1-31][3 lettres du mois]
+                    reste_corrige = re.sub(r'M([0-9]{1,2})([A-Z]{3})', r'M\1\2', reste)
+                    
+                    ligne_prop = prefix + vol + reste_corrige
 
             # 3. Correction de la ligne OS
             if "OS" in ligne_prop or "0S" in ligne_prop:
