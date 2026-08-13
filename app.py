@@ -4,7 +4,7 @@ import pytesseract
 from streamlit_paste_button import paste_image_button
 import re
 
-st.title("Transcripteur de Texte (OCR)")
+st.title("SNR en Image")
 
 paste_result = paste_image_button(label="📋 Coller une image (Ctrl+V ici)")
 
