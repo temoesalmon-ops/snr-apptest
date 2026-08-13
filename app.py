@@ -15,8 +15,8 @@ if paste_result.image_data is not None:
     with st.spinner("Transcription en cours..."):
         texte_brut = pytesseract.image_to_string(img, config='--oem 3 --psm 6')
         
-        # Capture du nombre variable de passagers à la fin du statut (ex: le 7 de NZ7)
-        match_pax = re.search(r'NZ([0-9]);?', texte_brut, re.IGNORECASE)
+        # Capture du chiffre suivant un indicateur de statut (NZ, HK, SA, ou 'n2' lu par erreur)
+        match_pax = re.search(r'(?:NZ|HK|SA|n2)(\d)\s*;?\s*$', texte_brut, re.IGNORECASE | re.MULTILINE)
         pax = match_pax.group(1) if match_pax else "1"
 
         lignes = texte_brut.split('\n')
@@ -27,7 +27,7 @@ if paste_result.image_data is not None:
             if not ligne_prop:
                 continue
                 
-            # 1. En-tête : utilise le chiffre de passagers trouvé
+            # 1. En-tête : utilise le chiffre trouvé après l'indicateur
             if "SNR" in ligne_prop.upper() or ligne_prop.upper().startswith("NZ"):
                 ligne_prop = f"NZ{pax}SNR"
 
@@ -35,7 +35,6 @@ if paste_result.image_data is not None:
             elif "SSV" in ligne_prop.upper():
                 ligne_prop = re.sub(r'^.*?SSV[T1I]?', 'SSVT', ligne_prop.upper())
                 
-                # Corrections des erreurs OCR lourdes signalées
                 ligne_prop = ligne_prop.replace('34M', '948M')
                 ligne_prop = ligne_prop.replace('ZVE', 'RVV')
                 
@@ -49,18 +48,19 @@ if paste_result.image_data is not None:
                         jour = reste[:2].translate(str.maketrans("SOZTLI", "502711"))
                         jour = re.sub(r'[^0-9]', '0', jour)
                         
-                        # Met la date et le parcours en minuscules, et préserve le NZ final
-                        suite = reste[2:].lower().replace('nz', 'NZ')
-                        ligne_prop = f"SSVT{vol}M{jour}{suite}"
+                        suite = reste[2:].lower()
                         
-                # S'assure que la fin se termine bien par NZ + chiffre
-                ligne_prop = re.sub(r'N[2Z]([0-9]);?$', r'NZ\1', ligne_prop)
+                        # Restaure correctement l'indicateur et le chiffre à la fin (ex: n27 -> NZ7)
+                        suite = re.sub(r'(nz|hk|sa|n2)(\d);?$', lambda m: ("NZ" if m.group(1).lower() in ["nz", "n2"] else m.group(1).upper()) + m.group(2), suite)
+                        
+                        ligne_prop = f"SSVT{vol}M{jour}{suite}"
 
-            # 3. Lignes OS
+            # 3. Lignes OS et autres corrections
             elif "OS" in ligne_prop.upper() or "0S" in ligne_prop.upper():
                 ligne_prop = re.sub(r'^.*?[0O]S\s*V[T1IL]', 'OS VT', ligne_prop.upper())
+                ligne_prop = ligne_prop.replace('NAUTISEORT', 'NAUTISPORT')
 
-            # Assurer le point-virgule
+            # Assurer le point-virgule final
             ligne_prop = ligne_prop.replace(';', '') + ';'
             lignes_corrigees.append(ligne_prop)
             
